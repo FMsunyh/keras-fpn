@@ -47,7 +47,7 @@ class RPNLoss(keras.layers.Layer):
         assigned_boxes = tf.where(keras.backend.greater_equal(labels, 0), ones, zeros)
 
         cls_loss = cls_loss / (keras.backend.maximum(1.0, keras.backend.sum(assigned_boxes)))
-        # cls_loss = tf.Print(cls_loss,[cls_loss],' rpn_cls_loss',summarize=10)
+        # cls_loss = tf.Print(cls_loss,[cls_loss],'\n rpn_cls_loss',summarize=10)
 
         return cls_loss
 
@@ -68,7 +68,7 @@ class RPNLoss(keras.layers.Layer):
                           |x| - 0.5 / sigma^2,    otherwise
         """
         sigma_2 = self.sigma**2
-        smoothL1_sign = tf.to_float(keras.backend.less(abs_regression_diff, 1. / sigma_2))
+        smoothL1_sign = tf.stop_gradient(tf.to_float(keras.backend.less(abs_regression_diff, 1. / sigma_2)))
         reg_loss = keras.backend.pow(abs_regression_diff, 2) * (sigma_2 / 2.) * smoothL1_sign + (abs_regression_diff - (0.5 / sigma_2)) * (1. - smoothL1_sign)
         reg_loss = keras.backend.sum(reg_loss, axis=1)
 
@@ -152,10 +152,6 @@ class RCNNLoss(keras.layers.Layer):
         :return: RCNN regression loss
         '''
 
-        # regression = tf.Print(regression,[tf.shape(regression)],' regression',summarize=10)
-        # regression_target = tf.Print(regression_target,[tf.shape(regression_target)],' regression_target',summarize=10)
-
-
         regression_diff     = regression - regression_target
         abs_regression_diff = keras.backend.abs(regression_diff)
 
@@ -165,7 +161,7 @@ class RCNNLoss(keras.layers.Layer):
                           |x| - 0.5 / sigma^2,    otherwise
         """
         sigma_2 = self.sigma**2
-        smoothL1_sign = tf.to_float(keras.backend.less(abs_regression_diff, 1. / sigma_2))
+        smoothL1_sign = tf.stop_gradient(tf.to_float(keras.backend.less(abs_regression_diff, 1. / sigma_2)))
         reg_loss = keras.backend.pow(abs_regression_diff, 2) * (sigma_2 / 2.) * smoothL1_sign + (abs_regression_diff - (0.5 / sigma_2)) * (1. - smoothL1_sign)
         reg_loss = keras.backend.sum(reg_loss, axis=1)
         # reg_loss = tf.reduce_mean(reg_loss)

@@ -34,4 +34,7 @@ cd tools
 python train_rcnn.py
 ```
 
+# evaluate
+save path: .../experiments/eval_output
+
 # Implemente

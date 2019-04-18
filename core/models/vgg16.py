@@ -67,6 +67,11 @@ def VGG16FasterRCNN(inputs, training=True, num_classes=21, name='VGG16FasterRCNN
 
     # 1.backbone
     vgg16 = keras.applications.VGG16(input_tensor=image, include_top=False, weights='imagenet')
+    for index, layer in enumerate(vgg16.layers):
+        layer.trainable = False
+        if index > 5:
+            break
+
     features_map = vgg16.get_layer(index=-2).output
 
     # 2. Anchors, target anchors

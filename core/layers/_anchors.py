@@ -28,7 +28,7 @@ import numpy as np
 class Anchors(keras.layers.Layer):
     def __init__(self, base_size, stride, *args, **kwargs):
         self.base_size = base_size
-        self.stride      = stride
+        self.stride    = stride
         super(Anchors, self).__init__(*args, **kwargs)
 
     def call(self, inputs, **kwargs):

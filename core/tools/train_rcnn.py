@@ -22,18 +22,19 @@ limitations under the License.
 # -----------------------------------------------------
 # -*- coding: utf-8 -*-
 import argparse
-import os
 import glob
+import os
 
 import keras
 import keras.preprocessing.image
 import tensorflow as tf
+
 from core.callbacks import RedirectModel
 from core.callbacks.eval import Evaluate
 from core.models import VGG16FasterRCNN
+from core.models.vgg16 import VGG16FasterRCNN_bbox
 from core.preprocessing import PascalVocGenerator
 from core.utils.config import load_setting_cfg
-from core.models.vgg16 import VGG16FasterRCNN_bbox
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -117,7 +118,7 @@ def create_callbacks(training_model, prediction_model, validation_generator, arg
 
     # evaluation
     if args.evaluation and validation_generator:
-        evaluation = Evaluate(weight_path, validation_generator, tensorboard=tensorboard_callback)
+        evaluation = Evaluate(weight_path, validation_generator, save_path=args.save_path, tensorboard=tensorboard_callback)
         evaluation = RedirectModel(evaluation, prediction_model)
         callbacks.append(evaluation)
 
@@ -141,11 +142,11 @@ def create_generators(args):
         rescale=1.0 / 255.0,
         horizontal_flip=True,
         vertical_flip=True,
-        rotate=True,
-        random_crop=0.1,
-        brightness=1,
-        shift_range=0.1,
-        zoom_range=0,
+        # rotate=False,
+        # random_crop=0.1,
+        # brightness=1,
+        # shift_range=0.1,
+        # zoom_range=0,
     )
     # valid_image_data_generator = keras.preprocessing.image.ImageDataGenerator(
     valid_image_data_generator = dict(
@@ -212,6 +213,8 @@ def parse_args():
     parser.add_argument('--weight_path', help='Path to classes directory (ie. /tmp/com_classes_463.h5).',
                         default='', type=str)
     parser.add_argument('--batch_size', help='Size of the batches.', default=1, type=int)
+
+    parser.add_argument('--save-path', help='Path for saving images with detections.', default=os.path.join(os.path.dirname(__file__), '../../', 'experiments/eval_output'))
 
     parser.add_argument('--tensorboard-dir', help='Log directory for Tensorboard output', default='./logs')
     parser.add_argument('--no-snapshots',    help='Disable saving snapshots.', dest='snapshots', action='store_false')

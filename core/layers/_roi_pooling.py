@@ -23,6 +23,7 @@ limitations under the License.
 # -*- coding: utf-8 -*-
 import keras
 import core
+import tensorflow as tf
 
 class RoiPooling(keras.layers.Layer):
     """ROI pooling layer for 2D inputs.
@@ -80,8 +81,14 @@ class RoiPooling(keras.layers.Layer):
         rois = keras.backend.concatenate([y1, x1, y2, x2], axis=-1)
         rois = keras.backend.reshape(rois, (-1, 4))
 
-        slices = core.backend.crop_and_resize(features_map, rois, (self.pool_size, self.pool_size))
+        # Won't be back-propagated to rois anyway, but to save time
+        bboxes = tf.stop_gradient(rois)
 
+        pool_size = self.pool_size * 2
+
+        slices = core.backend.crop_and_resize(features_map, bboxes, (pool_size, pool_size))
+
+        slices = keras.layers.MaxPooling2D(pool_size=(2,2), padding='same')(slices)
         out = keras.backend.expand_dims(slices, axis=0)
 
         return out

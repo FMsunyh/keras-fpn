@@ -25,6 +25,8 @@ import cv2
 import pickle
 
 from core.utils.compute_overlap import compute_overlap
+from core.utils.visualization import draw_annotations, draw_detections
+
 
 def _compute_ap(recall, precision):
     """ Compute the average precision, given the recall and precision curves.
@@ -91,22 +93,32 @@ def _compute_input(generator, index):
     image = generator.preprocess_image(raw_image.copy())
     image, scale = generator.resize_image(image)
 
-    return image, scale, raw_image.shape[0:2]
+    return raw_image, image, scale, raw_image.shape[0:2]
 
 def compute_output(output):
     scores, pred_shifts, proposal_boxes = output[0][0], output[1][0], output[2][0]
-    object_boxes = get_object_boxes(proposal_boxes, pred_shifts)
+
+    pred_shifts  = normalize_transfor_inv(pred_shifts)
+    object_boxes = bbox_transform_inv(proposal_boxes, pred_shifts)
 
     class_name, boxes, cls_socre = filter_boxes(object_boxes, scores) # filter boxes which score less than thresh
 
     boxes = np.asarray(boxes)
     return [class_name, boxes, cls_socre]
 
-def get_object_boxes(proposal_boxes, pred_shifts):
-    object_boxes = bbox_transform_inv(proposal_boxes, pred_shifts)
-    return object_boxes
+def normalize_transfor_inv(pred_shifts):
+    num_classes = int(pred_shifts.shape[1]/4)
+    stds = np.tile(np.array([0.1,0.1,0.2,0.2]), num_classes)
+    means = np.tile(np.array([0,0,0,0]), num_classes)
+
+    pred_shifts *= stds
+    pred_shifts += means
+    return pred_shifts
 
 def clip_boxes(boxes, im_shape):
+    if boxes.shape[0]==0:
+        return np.zeros((0, 4))
+
     # x1 >= 0
     boxes[:, 0::4] = np.maximum(np.minimum(boxes[:, 0::4], im_shape[1] - 1), 0)
     # y1 >= 0
@@ -177,28 +189,6 @@ def _get_thresh_label(class_name, dets, thresh=0.5):
         score_list.append(score)
     return boxes, cls_list, flag, score_list
 
-# def load_classes(path):
-#     classes_dict = {}
-#     try:
-#         if os.path.splitext(path)[1]=='.txt':
-#             classes_list = [line.replace('\n','').replace('\r','').strip()  for line in open(path,'r').readlines()]
-#             for index,label in enumerate(classes_list):
-#                 classes_dict[label] = index
-#         elif os.path.splitext(path)[1]=='.json':
-#             classes_dict = json.load(open(path,'r'))
-#         else:
-#             raise NotImplementedError
-#     except:
-#         print('can not load classes file ,path of {}'.format(path))
-#     assert len(classes_dict) > 0, 'Please check your classes file again ,path of {}'.format(path)
-#     return classes_dict
-#
-# def get_classes(classes_path='/home/hyl/data/ljk/github-pro/keras_frcnn/com_classes_1000.txt'):
-#     classes=load_classes(classes_path)
-#     classes = sorted(classes.items(),key=lambda d:d[1])
-#     classes = [cls[0] for cls in classes]
-#     return classes
-
 def filter_boxes(object_boxes, scores):
     NMS_THRESH = 0.3
     CONF_THRESH = 0.8
@@ -239,17 +229,15 @@ def _get_detections(generator, model, score_threshold=0.05, max_detections=100, 
     all_detections = [[None for i in range(generator.num_classes())] for j in range(generator.size())]
 
     for i in range(generator.size()):
-        image, scale, im_shape= _compute_input(generator, i)
-        # im_shape = image.shape[1:3] / scale
+        raw_image, image, scale, im_shape= _compute_input(generator, i)
         # run network
-        # output = model.predict(np.expand_dims(image, axis=0))
 
         output = model.predict_on_batch(np.expand_dims(image, axis=0))
 
         labels, boxes, scores = compute_output(output)
 
-        if len(labels)==0:
-            continue
+        # if len(labels)==0:
+        #     continue
 
         # clip boxes when out of image bound
         boxes = clip_boxes(boxes, im_shape)
@@ -257,20 +245,17 @@ def _get_detections(generator, model, score_threshold=0.05, max_detections=100, 
         # correct boxes for image scale
         boxes /= scale
 
-        # labels = [generator.name_to_label(name) for name in labels]
-
-
         image_boxes      = boxes
-        image_scores     = scores
+        image_scores     = np.array(scores)
         image_labels     = labels
         image_detections = np.concatenate([image_boxes, np.expand_dims(image_scores, axis=1), np.expand_dims(image_labels, axis=1)], axis=1)
 
 
-        # if save_path is not None:
-        #     draw_annotations(raw_image, generator.load_annotations(i), label_to_name=generator.label_to_name)
-        #     draw_detections(raw_image, image_boxes, image_scores, image_labels, label_to_name=generator.label_to_name)
-        #
-        #     cv2.imwrite(os.path.join(save_path, '{}.png'.format(i)), raw_image)
+        if save_path is not None:
+            draw_annotations(raw_image, generator.load_annotations(i), label_to_name=generator.label_to_name)
+            draw_detections(raw_image, image_boxes, image_scores, image_labels, label_to_name=generator.label_to_name)
+
+            cv2.imwrite(os.path.join(save_path, '{}.png'.format(i)), raw_image)
 
         # copy detections to all_detections
         for label in range(generator.num_classes()):
@@ -309,7 +294,7 @@ def _get_annotations(generator):
 def evaluate(
     generator,
     model,
-    iou_threshold=0.5,
+    iou_threshold=0.7,
     score_threshold=0.05,
     max_detections=100,
     save_path=None

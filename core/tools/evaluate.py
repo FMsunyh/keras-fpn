@@ -34,7 +34,6 @@ from utils.eval import evaluate
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
 def get_session():
     cfg = tf.ConfigProto()
@@ -51,7 +50,6 @@ def set_gpu():
 
 def create_generator(args):
 
-    # test_image_data_generator = keras.preprocessing.image.ImageDataGenerator(
     test_image_data_generator = dict(
         rescale=1.0 / 255.0,
     )
@@ -59,12 +57,11 @@ def create_generator(args):
     # create a generator for testing data
     validation_generator = PascalVocGenerator(
         args,
-        'test1',
+        'test',
         transform_generator=test_image_data_generator
     )
 
     return validation_generator
-
 
 def check_args(parsed_args):
     #TODO check the args
@@ -91,7 +88,7 @@ def parse_args():
     parser.add_argument('--iou-threshold', help='IoU Threshold to count for a positive detection (defaults to 0.5).',
                         default=0.5, type=float)
     parser.add_argument('--max-detections', help='Max Detections per image (defaults to 100).', default=100, type=int)
-    parser.add_argument('--save-path', help='Path for saving images with detections.')
+    parser.add_argument('--save-path', help='Path for saving images with detections.', default=os.path.join(os.path.dirname(__file__), '../../', 'experiments/eval_output'))
     parser.add_argument('--image-min-side', help='Rescale the image so the smallest side is min_side.', type=int,
                         default=600)
     parser.add_argument('--image-max-side', help='Rescale the image if the largest side is larger than max_side.',

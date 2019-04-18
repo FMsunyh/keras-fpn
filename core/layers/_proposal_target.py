@@ -223,10 +223,10 @@ class ProposalTarget(keras.layers.Layer):
 
         bbox_target = bbox_transform(seleted_gt_box_assign_to_anchors, boxes)
 
-        # if self.bbox_normalize_target:
-        #     # Optionally normalize targets by a precomputed mean and stdev
-        #     stdev = tf.ones(shape=tf.shape(bbox_target),dtype=tf.float32) * tf.constant([0.1,0.1,0.2,0.2])
-        #     bbox_target = ((bbox_target - tf.zeros(shape=tf.shape(bbox_target),dtype=tf.float32)) / stdev)
+        if self.bbox_normalize_target:
+            # Optionally normalize targets by a precomputed mean and stdev
+            stdev = tf.ones(shape=tf.shape(bbox_target),dtype=tf.float32) * tf.constant([0.1,0.1,0.2,0.2])
+            bbox_target = ((bbox_target - tf.zeros(shape=tf.shape(bbox_target),dtype=tf.float32)) / stdev)
 
         return bbox_target
 
